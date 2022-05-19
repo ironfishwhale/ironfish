@@ -20,6 +20,7 @@ pub struct ValueCommitment {
 
 impl ValueCommitment {
     pub fn commitment(&self) -> jubjub::SubgroupPoint {
+        // TODO: Should this use AssetType::value_commitment_generator() instead of AssetType::asset_generator()?
         (CofactorGroup::clear_cofactor(&self.asset_generator) * jubjub::Fr::from(self.value))
             + (constants::VALUE_COMMITMENT_RANDOMNESS_GENERATOR * self.randomness)
     }

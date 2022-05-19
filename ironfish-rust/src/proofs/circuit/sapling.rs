@@ -30,6 +30,7 @@ pub const TREE_DEPTH: usize = zcash_primitives::sapling::SAPLING_COMMITMENT_TREE
 
 /// This is an instance of the `Spend` circuit.
 pub struct Spend {
+    // TODO: Should we pass this in anymore, or just rely on asset type? Feels like this could lead to accidental bugs.
     /// Pedersen commitment to the value being spent
     pub value_commitment: Option<ValueCommitment>,
 
@@ -86,6 +87,7 @@ pub fn hash_into_boolean_vec_le<Scalar: PrimeField, CS: ConstraintSystem<Scalar>
 
 /// This is an output circuit instance.
 pub struct Output {
+    // TODO: Should we pass this in anymore, or just rely on asset type? Feels like this could lead to accidental bugs.
     /// Pedersen commitment to the value being spent
     pub value_commitment: Option<ValueCommitment>,
 
@@ -627,6 +629,7 @@ impl Circuit<bls12_381::Scalar> for Output {
     }
 }
 
+// TODO: Get these working
 // #[test]
 // fn test_input_circuit_with_bls12_381() {
 //     use bellman::gadgets::test::*;
