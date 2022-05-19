@@ -22,7 +22,7 @@ use jubjub::ExtendedPoint;
 use rand::rngs::OsRng;
 
 use zcash_primitives::{
-    constants::{VALUE_COMMITMENT_RANDOMNESS_GENERATOR, VALUE_COMMITMENT_VALUE_GENERATOR},
+    constants::VALUE_COMMITMENT_RANDOMNESS_GENERATOR,
     redjubjub::{PrivateKey, PublicKey, Signature},
 };
 

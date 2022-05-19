@@ -229,9 +229,7 @@ export class StratumServer {
       )}`,
     )
 
-    client.socket.removeAllListeners()
     client.close()
-    this.clients.delete(client.id)
   }
 
   private getNotifyMessage(): MiningNotifyMessage {

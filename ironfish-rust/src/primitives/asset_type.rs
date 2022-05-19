@@ -3,7 +3,7 @@ use blake2s_simd::Params as Blake2sParams;
 use group::{cofactor::CofactorGroup, Group, GroupEncoding};
 use zcash_primitives::constants::{GH_FIRST_BLOCK, VALUE_COMMITMENT_GENERATOR_PERSONALIZATION};
 
-use crate::primitives::constants::ASSET_IDENTIFIER_PERSONALIZATION;
+use crate::{errors::AssetError, primitives::constants::ASSET_IDENTIFIER_PERSONALIZATION};
 
 use super::{constants::ASSET_IDENTIFIER_LENGTH, sapling::ValueCommitment};
 
@@ -26,13 +26,13 @@ impl AssetType {
 
     /// Create a new AssetType from a unique asset name
     /// Not constant-time, uses rejection sampling
-    pub fn new(name: &[u8]) -> Result<AssetType, ()> {
+    pub fn new(name: &[u8]) -> Result<AssetType, AssetError> {
         let mut nonce = 0u8;
         loop {
             if let Some(asset_type) = AssetType::new_with_nonce(name, nonce) {
                 return Ok(asset_type);
             }
-            nonce = nonce.checked_add(1).ok_or(())?;
+            nonce = nonce.checked_add(1).ok_or(AssetError::RandomnessError)?;
         }
     }
 

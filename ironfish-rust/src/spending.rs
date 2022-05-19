@@ -100,10 +100,10 @@ impl<'a> SpendParams {
         let mut buffer = [0u8; 64];
         thread_rng().fill(&mut buffer[..]);
 
-        let value_commitment =
-            AssetType::default().value_commitment(note.value, jubjub::Fr::from_bytes_wide(&buffer));
-
         let asset_type = AssetType::default();
+
+        let value_commitment =
+            asset_type.value_commitment(note.value, jubjub::Fr::from_bytes_wide(&buffer));
 
         let mut buffer = [0u8; 64];
         thread_rng().fill(&mut buffer[..]);
@@ -411,25 +411,13 @@ mod test {
     use super::{SpendParams, SpendProof};
     use crate::{
         keys::SaplingKey,
-        merkle_note::position,
         note::{Memo, Note},
-        primitives::asset_type::AssetType,
-        proofs::circuit::sapling::Spend,
         sapling_bls12,
         test_util::make_fake_witness,
-        witness::{WitnessNode, WitnessTrait},
     };
-    use bellman::groth16;
-    use bls12_381::Bls12;
     use group::Curve;
-    use rand::{prelude::*, rngs::OsRng};
+    use rand::prelude::*;
     use rand::{thread_rng, Rng};
-    use zcash_primitives::{
-        merkle_tree::MerklePath,
-        primitives::{ProofGenerationKey, Rseed},
-        sapling::Node,
-    };
-    use zcash_proofs::sapling::SaplingProvingContext;
 
     #[test]
     fn test_spend_round_trip() {
