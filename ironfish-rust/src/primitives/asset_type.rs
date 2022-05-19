@@ -21,7 +21,7 @@ pub struct AssetType {
 impl AssetType {
     /// Return the default asset type
     pub fn default() -> AssetType {
-        DEFAULT_ASSET.clone()
+        *DEFAULT_ASSET
     }
 
     /// Create a new AssetType from a unique asset name
@@ -129,14 +129,6 @@ impl AssetType {
         CofactorGroup::clear_cofactor(&self.asset_generator())
     }
 
-    /// Get the asset identifier as a vector of bools
-    pub fn identifier_bits(&self) -> Vec<Option<bool>> {
-        self.get_identifier()
-            .iter()
-            .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))
-            .collect()
-    }
-
     /// Construct a value commitment from given value and randomness
     pub fn value_commitment(&self, value: u64, randomness: jubjub::Fr) -> ValueCommitment {
         ValueCommitment {
@@ -150,6 +142,7 @@ impl AssetType {
         self.nonce
     }
 }
+
 impl PartialEq for AssetType {
     fn eq(&self, other: &Self) -> bool {
         self.get_identifier() == other.get_identifier()

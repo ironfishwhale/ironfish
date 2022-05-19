@@ -5,23 +5,25 @@ use group::Curve;
 
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
+use jubjub::ExtendedPoint;
 use zcash_primitives::constants;
 
 use zcash_primitives::primitives::{PaymentAddress, ProofGenerationKey};
 
 // use super::pedersen_hash;
 use bellman::gadgets::blake2s;
-use bellman::gadgets::boolean;
+use bellman::gadgets::boolean::{self, AllocatedBit, Boolean};
 use bellman::gadgets::multipack;
 use bellman::gadgets::num;
 use bellman::gadgets::Assignment;
+use zcash_proofs::circuit::ecc::EdwardsPoint;
 use zcash_proofs::circuit::{ecc, pedersen_hash};
 use zcash_proofs::constants::{
     NOTE_COMMITMENT_RANDOMNESS_GENERATOR, NULLIFIER_POSITION_GENERATOR,
     PROOF_GENERATION_KEY_GENERATOR, SPENDING_KEY_GENERATOR, VALUE_COMMITMENT_RANDOMNESS_GENERATOR,
-    VALUE_COMMITMENT_VALUE_GENERATOR,
 };
 
+use crate::primitives::asset_type::AssetType;
 use crate::primitives::sapling::ValueCommitment;
 
 pub const TREE_DEPTH: usize = zcash_primitives::sapling::SAPLING_COMMITMENT_TREE_DEPTH;
@@ -30,6 +32,9 @@ pub const TREE_DEPTH: usize = zcash_primitives::sapling::SAPLING_COMMITMENT_TREE
 pub struct Spend {
     /// Pedersen commitment to the value being spent
     pub value_commitment: Option<ValueCommitment>,
+
+    /// Asset type that the value is denominated in
+    pub asset_type: Option<AssetType>,
 
     /// Key required to construct proofs for spending notes
     /// for a particular spending key
@@ -52,10 +57,40 @@ pub struct Spend {
     pub anchor: Option<bls12_381::Scalar>,
 }
 
+// TODO: This is a minorly tweaked version of bellman::gadgets::boolean::u64_into_boolean_vec_le, this needs a better home
+pub fn hash_into_boolean_vec_le<Scalar: PrimeField, CS: ConstraintSystem<Scalar>>(
+    mut cs: CS,
+    value: Option<&[u8; 32]>,
+) -> Result<Vec<Boolean>, SynthesisError> {
+    let values = match value {
+        Some(value) => value
+            .iter()
+            .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))
+            .collect(),
+        None => vec![None; 256],
+    };
+
+    let bits = values
+        .into_iter()
+        .enumerate()
+        .map(|(i, b)| {
+            Ok(Boolean::from(AllocatedBit::alloc(
+                cs.namespace(|| format!("bit {}", i)),
+                b,
+            )?))
+        })
+        .collect::<Result<Vec<_>, SynthesisError>>()?;
+
+    Ok(bits)
+}
+
 /// This is an output circuit instance.
 pub struct Output {
     /// Pedersen commitment to the value being spent
     pub value_commitment: Option<ValueCommitment>,
+
+    /// Asset Type
+    pub asset_type: Option<AssetType>,
 
     /// The payment address of the recipient
     pub payment_address: Option<PaymentAddress>,
@@ -71,6 +106,7 @@ pub struct Output {
 /// input to the circuit
 fn expose_value_commitment<CS>(
     mut cs: CS,
+    value_commitment_generator: EdwardsPoint,
     value_commitment: Option<ValueCommitment>,
 ) -> Result<Vec<boolean::Boolean>, SynthesisError>
 where
@@ -83,9 +119,8 @@ where
     )?;
 
     // Compute the note value in the exponent
-    let value = ecc::fixed_base_multiplication(
+    let value = value_commitment_generator.mul(
         cs.namespace(|| "compute the value in the exponent"),
-        &VALUE_COMMITMENT_VALUE_GENERATOR,
         &value_bits,
     )?;
 
@@ -217,9 +252,30 @@ impl Circuit<bls12_381::Scalar> for Spend {
         // Compute pk_d = g_d^ivk
         let pk_d = g_d.mul(cs.namespace(|| "compute pk_d"), &ivk)?;
 
+        // Witness the asset type
+        let asset_generator = ecc::EdwardsPoint::witness(
+            cs.namespace(|| "asset_generator"),
+            self.asset_type
+                .as_ref()
+                .and_then(|at| at.asset_generator().into()),
+        )?;
+
+        let value_commitment_generator = ecc::EdwardsPoint::witness(
+            cs.namespace(|| "asset_generator"),
+            self.asset_type
+                .as_ref()
+                .and_then(|at| ExtendedPoint::from(at.value_commitment_generator()).into()),
+        )?;
+
+        value_commitment_generator
+            .assert_not_small_order(cs.namespace(|| "asset_generator not small order"))?;
+
         // Compute note contents:
-        // value (in big endian) followed by g_d and pk_d
+        // asset_generator, value (in big endian), g_d, pk_d
         let mut note_contents = vec![];
+
+        // Place asset_generator in the note
+        note_contents.extend(asset_generator.repr(cs.namespace(|| "asset_generator"))?);
 
         // Handle the value; we'll need it later for the
         // dummy input check.
@@ -228,6 +284,7 @@ impl Circuit<bls12_381::Scalar> for Spend {
             // Get the value in little-endian bit order
             let value_bits = expose_value_commitment(
                 cs.namespace(|| "value commitment"),
+                value_commitment_generator,
                 self.value_commitment,
             )?;
 
@@ -251,6 +308,7 @@ impl Circuit<bls12_381::Scalar> for Spend {
 
         assert_eq!(
             note_contents.len(),
+            256 + // asset_generator
             64 + // value
             256 + // g_d
             256 // p_d
@@ -395,13 +453,70 @@ impl Circuit<bls12_381::Scalar> for Output {
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
         // Let's start to construct our note, which contains
-        // value (big endian)
+        // asset_generator, value (big endian), g_d, p_k
         let mut note_contents = vec![];
+
+        // Booleanize asset_identifier
+        let asset_identifier = hash_into_boolean_vec_le(
+            cs.namespace(|| "asset_identifier"),
+            self.asset_type
+                .as_ref()
+                .and_then(|at| at.get_identifier().into()),
+        )?;
+
+        // Ensure the preimage of the generator is 32 bytes
+        assert_eq!(256, asset_identifier.len());
+
+        // Compute the asset generator from the asset identifier
+        let asset_generator_image = blake2s::blake2s(
+            cs.namespace(|| "value base computation"),
+            &asset_identifier,
+            constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
+        )?;
+
+        // Witness the asset type
+        let asset_generator = ecc::EdwardsPoint::witness(
+            cs.namespace(|| "asset_generator"),
+            self.asset_type
+                .as_ref()
+                .and_then(|at| at.asset_generator().into()),
+        )?;
+
+        let value_commitment_generator = ecc::EdwardsPoint::witness(
+            cs.namespace(|| "asset_generator"),
+            self.asset_type
+                .as_ref()
+                .and_then(|at| ExtendedPoint::from(at.value_commitment_generator()).into()),
+        )?;
+
+        let asset_generator_bits =
+            asset_generator.repr(cs.namespace(|| "unpack asset_generator"))?;
+
+        value_commitment_generator
+            .assert_not_small_order(cs.namespace(|| "asset_generator not small order"))?;
+
+        // Check integrity of the asset generator
+        // The following 256 constraints may not be strictly
+        // necessary; the output of the BLAKE2s hash may be
+        // interpreted directly as a curve point instead
+        // However, witnessing the asset generator separately
+        // and checking equality to the image of the hash
+        // is conceptually clear and not particularly expensive
+        for i in 0..256 {
+            boolean::Boolean::enforce_equal(
+                cs.namespace(|| format!("integrity of asset generator bit {}", i)),
+                &asset_generator_bits[i],
+                &asset_generator_image[i],
+            )?;
+        }
+
+        note_contents.extend(asset_generator_bits);
 
         // Expose the value commitment and place the value
         // in the note.
         note_contents.extend(expose_value_commitment(
             cs.namespace(|| "value commitment"),
+            value_commitment_generator,
             self.value_commitment,
         )?);
 
@@ -471,6 +586,7 @@ impl Circuit<bls12_381::Scalar> for Output {
 
         assert_eq!(
             note_contents.len(),
+            256 + // asset_generator
             64 + // value
             256 + // g_d
             256 // pk_d
