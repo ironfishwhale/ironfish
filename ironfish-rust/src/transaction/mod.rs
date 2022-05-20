@@ -276,7 +276,7 @@ impl ProposedTransaction {
         let private_key = PrivateKey(self.binding_signature_key);
         let public_key =
             PublicKey::from_private(&private_key, VALUE_COMMITMENT_RANDOMNESS_GENERATOR);
-        let mut value_balance_point = value_balance_to_point(self.transaction_fee as i64)?;
+        let mut value_balance_point = transaction_fee_to_point(self.transaction_fee as i64)?;
 
         value_balance_point = -value_balance_point;
         let mut calculated_public_key = self.binding_verification_key;
@@ -525,7 +525,7 @@ impl Transaction {
         &self,
         binding_verification_key: &ExtendedPoint,
     ) -> Result<(), TransactionError> {
-        let mut value_balance_point = value_balance_to_point(self.transaction_fee)?;
+        let mut value_balance_point = transaction_fee_to_point(self.transaction_fee)?;
         value_balance_point = -value_balance_point;
 
         let mut public_key_point = *binding_verification_key;
@@ -548,10 +548,11 @@ impl Transaction {
     }
 }
 
-// Convert the integer value to a point on the Jubjub curve, accounting for
-// negative values
-// TODO: this is really more like "transaction fee to point"
-fn value_balance_to_point(value: i64) -> Result<ExtendedPoint, TransactionError> {
+// Convert the integer value to a point on the Jubjub curve, accounting for negative values
+// Note: If this functionality is needed for other values, it is probably best to create a separate
+// function that takes in an asset type. Transaction fee should always be denominated in the default
+// asset type.
+fn transaction_fee_to_point(value: i64) -> Result<ExtendedPoint, TransactionError> {
     // Can only construct edwards point on positive numbers, so need to
     // add and possibly negate later
     let is_negative = value.is_negative();
