@@ -1,3 +1,6 @@
+// Credit to https://github.com/zcash/librustzcash for providing the initial implementation of this file
+// Credit to https://github.com/anoma/masp for providing the initial implementation of adding asset awareness to this file
+
 //! The Sapling circuits.
 
 use ff::PrimeField;

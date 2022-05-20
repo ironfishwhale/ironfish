@@ -1,3 +1,5 @@
+// Credit to https://github.com/zcash/librustzcash for providing the initial implementation of this file
+
 use blake2s_simd::Params as Blake2sParams;
 use byteorder::{LittleEndian, WriteBytesExt};
 use group::{cofactor::CofactorGroup, Curve, GroupEncoding};

@@ -1,4 +1,5 @@
-// TODO: Add attribution to the appropriate files
+// Credit to https://github.com/anoma/masp for providing the initial implementation of this file
+
 use blake2s_simd::Params as Blake2sParams;
 use group::{cofactor::CofactorGroup, Group, GroupEncoding};
 use zcash_primitives::constants::{GH_FIRST_BLOCK, VALUE_COMMITMENT_GENERATOR_PERSONALIZATION};
