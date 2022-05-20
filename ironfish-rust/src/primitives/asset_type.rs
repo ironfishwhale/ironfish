@@ -133,7 +133,7 @@ impl AssetType {
     /// Construct a value commitment from given value and randomness
     pub fn value_commitment(&self, value: u64, randomness: jubjub::Fr) -> ValueCommitment {
         ValueCommitment {
-            asset_generator: self.asset_generator(),
+            generator: self.value_commitment_generator(),
             value,
             randomness,
         }

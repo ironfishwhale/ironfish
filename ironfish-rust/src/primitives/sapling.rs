@@ -2,7 +2,7 @@
 
 use blake2s_simd::Params as Blake2sParams;
 use byteorder::{LittleEndian, WriteBytesExt};
-use group::{cofactor::CofactorGroup, Curve, GroupEncoding};
+use group::{Curve, GroupEncoding};
 use rand::{CryptoRng, Rng, RngCore};
 use zcash_primitives::{
     constants,
@@ -15,15 +15,14 @@ use super::asset_type::AssetType;
 
 #[derive(Clone)]
 pub struct ValueCommitment {
-    pub asset_generator: jubjub::ExtendedPoint,
+    pub generator: jubjub::SubgroupPoint,
     pub value: u64,
     pub randomness: jubjub::Fr,
 }
 
 impl ValueCommitment {
     pub fn commitment(&self) -> jubjub::SubgroupPoint {
-        // TODO: Should this use AssetType::value_commitment_generator() instead of AssetType::asset_generator()?
-        (CofactorGroup::clear_cofactor(&self.asset_generator) * jubjub::Fr::from(self.value))
+        (self.generator * jubjub::Fr::from(self.value))
             + (constants::VALUE_COMMITMENT_RANDOMNESS_GENERATOR * self.randomness)
     }
 }
