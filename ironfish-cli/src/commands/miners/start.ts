@@ -37,6 +37,11 @@ export class Miner extends IronfishCommand {
       char: 'a',
       description: 'the public address to receive pool payouts',
     }),
+    cpuAffinity: Flags.boolean({
+      default: false,
+      char: 'c',
+      description: 'try to pin mining threads to specific cpu cores when possible',
+    }),
     richOutput: Flags.boolean({
       default: true,
       allowNo: true,
@@ -94,6 +99,7 @@ export class Miner extends IronfishCommand {
         batchSize,
         host: host,
         port: port,
+        cpuAffinity: flags.cpuAffinity,
       })
 
       miner.start()
@@ -118,6 +124,7 @@ export class Miner extends IronfishCommand {
         logger: this.logger,
         batchSize,
         rpc,
+        cpuAffinity: flags.cpuAffinity,
       })
 
       miner.start()

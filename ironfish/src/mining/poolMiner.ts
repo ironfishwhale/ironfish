@@ -34,6 +34,7 @@ export class MiningPoolMiner {
     publicAddress: string
     host: string
     port: number
+    cpuAffinity: boolean
   }) {
     this.logger = options.logger
     this.graffiti = null
@@ -43,7 +44,7 @@ export class MiningPoolMiner {
     }
 
     const threadCount = options.threadCount ?? 1
-    this.threadPool = new ThreadPoolHandler(threadCount, options.batchSize)
+    this.threadPool = new ThreadPoolHandler(threadCount, options.batchSize, options.cpuAffinity)
 
     this.stratum = new StratumClient({
       miner: this,

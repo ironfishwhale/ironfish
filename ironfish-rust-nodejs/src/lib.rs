@@ -68,9 +68,13 @@ struct ThreadPoolHandler {
 impl ThreadPoolHandler {
     #[napi(constructor)]
     #[allow(dead_code)]
-    pub fn new(thread_count: u32, batch_size: u32) -> Self {
+    pub fn new(thread_count: u32, batch_size: u32, cpu_affinity: bool) -> Self {
         ThreadPoolHandler {
-            threadpool: mining::threadpool::ThreadPool::new(thread_count as usize, batch_size),
+            threadpool: mining::threadpool::ThreadPool::new(
+                thread_count as usize,
+                batch_size,
+                cpu_affinity,
+            ),
         }
     }
 

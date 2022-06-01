@@ -49,13 +49,14 @@ export class MiningSoloMiner {
     logger: Logger
     graffiti: Buffer
     rpc: IronfishRpcClient
+    cpuAffinity: boolean
   }) {
     this.rpc = options.rpc
     this.logger = options.logger
     this.graffiti = options.graffiti
 
     const threadCount = options.threadCount ?? 1
-    this.threadPool = new ThreadPoolHandler(threadCount, options.batchSize)
+    this.threadPool = new ThreadPoolHandler(threadCount, options.batchSize, options.cpuAffinity)
 
     this.miningRequestId = 0
     this.nextMiningRequestId = 0

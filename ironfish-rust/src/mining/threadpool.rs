@@ -12,21 +12,35 @@ pub struct ThreadPool {
     mining_request_id: u32,
 }
 impl ThreadPool {
-    pub fn new(thread_count: usize, batch_size: u32) -> Self {
+    pub fn new(thread_count: usize, batch_size: u32, cpu_affinity: bool) -> Self {
+        println!("Using CPU Affinity: {}", cpu_affinity);
         let (block_found_channel, block_found_receiver) = mpsc::channel::<(u64, u32)>();
 
         let (hash_rate_channel, hash_rate_receiver) = mpsc::channel::<u32>();
 
+        let core_ids = core_affinity::get_core_ids().unwrap();
+        println!("core_ids: {:?}", core_ids.len());
+
         let mut threads = Vec::with_capacity(thread_count);
-        for id in 0..thread_count {
+
+        let mut spawned_count = 0;
+        for id in core_ids.iter().rev() {
+            println!("Spawning id {}", id.id);
             threads.push(Thread::new(
-                id as u64,
+                *id,
                 block_found_channel.clone(),
                 hash_rate_channel.clone(),
                 thread_count,
                 batch_size,
+                cpu_affinity,
             ));
+
+            spawned_count += 1;
+            if spawned_count >= thread_count {
+                break;
+            }
         }
+        println!("Spawned {} threads", spawned_count);
 
         ThreadPool {
             threads,

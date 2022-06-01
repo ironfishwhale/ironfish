@@ -25,22 +25,27 @@ pub(crate) struct Thread {
 }
 impl Thread {
     pub(crate) fn new(
-        id: u64,
+        id: core_affinity::CoreId,
         block_found_channel: Sender<(u64, u32)>,
         hash_rate_channel: Sender<u32>,
         pool_size: usize,
         batch_size: u32,
+        set_affinity: bool,
     ) -> Self {
         let (work_sender, work_receiver) = mpsc::channel::<Command>();
 
         thread::Builder::new()
-            .name(id.to_string())
+            .name(id.id.to_string())
             .spawn(move || {
+                if set_affinity {
+                    core_affinity::set_for_current(id);
+                }
+
                 process_commands(
                     work_receiver,
                     block_found_channel,
                     hash_rate_channel,
-                    id,
+                    id.id as u64,
                     pool_size,
                     batch_size as u64,
                 )
