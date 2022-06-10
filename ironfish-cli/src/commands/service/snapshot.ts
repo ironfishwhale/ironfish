@@ -81,29 +81,34 @@ export default class CreateSnapshot extends IronfishCommand {
 
     const client = await this.sdk.connectRpc()
 
-    const stream = client.snapshotChainStream({
-      start: args.start as number | null,
-      stop: args.stop as number | null,
-    })
+    // const stream = client.snapshotChainStream({
+    //   start: args.start as number | null,
+    //   stop: args.stop as number | null,
+    // })
 
-    const { start, stop } = await AsyncUtils.first(stream.contentStream())
-    this.log(`Retrieving blocks from ${start} -> ${stop} for snapshot generation`)
+    // const { start, stop } = await AsyncUtils.first(stream.contentStream())
+    // this.log(`Retrieving blocks from ${start} -> ${stop} for snapshot generation`)
 
-    const progress = CliUx.ux.progress({
-      format: 'Retrieving blocks: [{bar}] {value}/{total} {percentage}% | ETA: {eta}s',
-    }) as ProgressBar
+    // const progress = CliUx.ux.progress({
+    //   format: 'Retrieving blocks: [{bar}] {value}/{total} {percentage}% | ETA: {eta}s',
+    // }) as ProgressBar
 
-    progress.start(stop - start + 1, 0)
+    // progress.start(stop - start + 1, 0)
 
-    for await (const result of stream.contentStream()) {
-      if (result.blockBuffer && result.seq) {
-        const blockFilePath = this.sdk.fileSystem.join(blockExportPath, `${result.seq}.bin`)
-        await fsAsync.writeFile(blockFilePath, result.blockBuffer)
-        progress.update(result.seq || 0)
-      }
+    for (let x = 0; x < 1000; x += 1) {
+      const response = await client.snapshotChainStream({ start: x, stop: x + 50 })
+      console.log(response.content)
     }
 
-    progress.stop()
+    // for await (const result of stream.contentStream()) {
+    //   if (result.blockBuffer && result.seq) {
+    //     const blockFilePath = this.sdk.fileSystem.join(blockExportPath, `${result.seq}.bin`)
+    //     await fsAsync.writeFile(blockFilePath, result.blockBuffer)
+    //     progress.update(result.seq || 0)
+    //   }
+    // }
+
+    // progress.stop()
 
     const snapshotPath = this.sdk.fileSystem.join(
       exportDir,
@@ -112,13 +117,13 @@ export default class CreateSnapshot extends IronfishCommand {
 
     this.log(`Zipping\n    SRC ${blockExportPath}\n    DST ${snapshotPath}\n`)
     CliUx.ux.action.start(`Zipping ${blockExportPath}`)
-    await this.zipDir(blockExportPath, snapshotPath)
+    // await this.zipDir(blockExportPath, snapshotPath)
 
-    const stat = await fsAsync.stat(snapshotPath)
-    CliUx.ux.action.stop(`done (${FileUtils.formatFileSize(stat.size)})`)
+    // const stat = await fsAsync.stat(snapshotPath)
+    // CliUx.ux.action.stop(`done (${FileUtils.formatFileSize(stat.size)})`)
 
-    CliUx.ux.action.start(`Uploading to ${bucket}`)
-    await this.uploadToS3(snapshotPath, bucket)
+    // CliUx.ux.action.start(`Uploading to ${bucket}`)
+    // await this.uploadToS3(snapshotPath, bucket)
     CliUx.ux.action.stop(`done`)
   }
 

@@ -52,7 +52,7 @@ router.register<typeof SnapshotChainStreamRequestSchema, SnapshotChainStreamResp
       stop: request.data?.stop,
     })
 
-    request.stream({ start, stop })
+    // request.stream({ start, stop })
 
     for (let i = start; i <= stop; ++i) {
       const blockHeader = await node.chain.getHeaderAtSequence(i)
@@ -62,11 +62,11 @@ router.register<typeof SnapshotChainStreamRequestSchema, SnapshotChainStreamResp
           const serializedBlock = node.chain.strategy.blockSerde.serialize(block)
           const bw = bufio.write(getBlockSize(serializedBlock))
           const blockBuffer = writeBlock(bw, serializedBlock).render()
-          request.stream({ start, stop, seq: i, blockBuffer })
+          request.end({ start, stop, seq: i, blockBuffer })
         }
       }
     }
 
-    request.end()
+    // request.end()
   },
 )

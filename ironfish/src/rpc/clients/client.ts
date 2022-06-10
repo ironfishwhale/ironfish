@@ -339,11 +339,11 @@ export abstract class IronfishClient {
 
   snapshotChainStream(
     params: SnapshotChainStreamRequest = undefined,
-  ): Response<void, SnapshotChainStreamResponse> {
-    return this.request<void, SnapshotChainStreamResponse>(
+  ): Promise<ResponseEnded<SnapshotChainStreamResponse>> {
+    return this.request<SnapshotChainStreamResponse>(
       `${ApiNamespace.chain}/snapshotChainStream`,
       params,
-    )
+    ).waitForEnd()
   }
 
   async getBlockInfo(
