@@ -232,10 +232,10 @@ export class MiningPool {
     try {
       headerBytes = mineableHeaderString(blockTemplate.header)
     } catch (error) {
-      this.logger.debug(`${client.id} sent malformed work. No longer sending work.`)
-      this.stratum.addBadClient(client)
+      this.stratum.peers.punish(client, `${client.id} sent malformed work.`)
       return
     }
+
     const hashedHeader = blake3(headerBytes)
 
     if (hashedHeader.compare(Buffer.from(blockTemplate.header.target, 'hex')) !== 1) {

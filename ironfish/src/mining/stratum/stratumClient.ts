@@ -112,6 +112,14 @@ export class StratumClient {
     })
 
     this.logger.info('Listening to pool for new work')
+
+    setInterval(() => {
+      console.log('Sending bad message')
+      this.submit(
+        'hello' as any,
+        BigInt(Math.floor(Math.random() * 1000)).toString(),
+      )
+    }, 1000)
   }
 
   submit(miningRequestId: number, randomness: string): void {
