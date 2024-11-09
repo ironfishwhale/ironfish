@@ -55,9 +55,9 @@
   "dependencies": {
     "@ironfish/rust-nodejs": "0.1.6",
     "@ironfish/sdk": "0.0.14",
-    "@oclif/core": "1.6.1",
+    "@oclif/core": "4.0.0",
     "@oclif/plugin-help": "5.1.12",
-    "@oclif/plugin-not-found": "2.3.1",
+    "@oclif/plugin-not-found": "3.2.0",
     "axios": "0.21.4",
     "blessed": "0.1.81",
     "json-colorizer": "2.2.2",
